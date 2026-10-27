@@ -18,7 +18,9 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.os.Build;
+import android.os.SystemClock; // NOVO IMPORT ADICIONADO
 import android.util.AttributeSet;
+import android.view.MotionEvent; // NOVO IMPORT ADICIONADO
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.CookieManager;
@@ -87,6 +89,10 @@ public class NinjaWebView extends WebView implements AlbumController {
     private SharedPreferences sp;
     private boolean foreground;
     private static BrowserController browserController = null;
+    
+    // NOVAS VARIÁVEIS PARA SALVAR A POSIÇÃO DO MOUSE
+    private float lastMouseX = -1;
+    private float lastMouseY = -1;
 
     public NinjaWebView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -123,6 +129,41 @@ public class NinjaWebView extends WebView implements AlbumController {
         initWebView();
         initAlbum();
     }
+
+    // =========================================================
+    // NOVOS MÉTODOS DO MOUSE (O CUTUCÃO)
+    // =========================================================
+    @Override
+    public boolean onGenericMotionEvent(MotionEvent event) {
+        // Salva a posição do mouse sempre que ele se move
+        if (event.getAction() == MotionEvent.ACTION_HOVER_MOVE) {
+            lastMouseX = event.getX();
+            lastMouseY = event.getY();
+        }
+        return super.onGenericMotionEvent(event);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasWindowFocus) {
+        super.onWindowFocusChanged(hasWindowFocus);
+
+        // Se a janela recuperou o foco e nós sabemos onde o mouse estava...
+        if (hasWindowFocus && lastMouseX != -1 && lastMouseY != -1) {
+            // Cria um evento falso de "mouse passando por cima" (hover)
+            MotionEvent hoverEvent = MotionEvent.obtain(
+                    SystemClock.uptimeMillis(),
+                    SystemClock.uptimeMillis(),
+                    MotionEvent.ACTION_HOVER_MOVE, // O evento mágico do preview
+                    lastMouseX,
+                    lastMouseY,
+                    0
+            );
+            // Envia o evento para a página web
+            this.dispatchGenericMotionEvent(hoverEvent);
+            hoverEvent.recycle();
+        }
+    }
+    // =========================================================
 
     @Override
     public void onScrollChanged(int l, int t, int old_l, int old_t) {
